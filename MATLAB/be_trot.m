@@ -17,7 +17,7 @@ F=tf(Kca*Kf,[T1*T2 T1+T2 1]);   %TF du filtre
 T=G1*G2*F;                      %TF du système en BO
 
 %Calcul des coefficients de C
-Ti = K/(2*pi*400);
+Ti = K/(2*pi*400)
 C=tf([Tm 1],[Ti 0])             %Tm correspond à la fc à 80Hz que l'on 
                                 %souhaite éliminer
 H = T*C                         %TF avec le correcteur
@@ -25,9 +25,16 @@ H = T*C                         %TF avec le correcteur
 %datacursormode
 %grid
 
-%sim('sim1', 2)
-out = sim('sim_satur',0.05)
-plot(out.simout)
-figure 
+%Simulation avant discrétisation 
+%out = sim('sim1', 2)           %Simulation sans saturateur
+%out = sim('sim_satur',0.05)     %Simulation avec saturateur
+%plot(out.simout)
+%figure 
+%plot(out.simout1)
+
+%Discrétisation
+Te = 1/5000                   %Période d'échantillonage 
+D = c2d(C,Te)                   %TF discrète 
+out = sim('sim_satur_disc',0.05)
 plot(out.simout1)
 
