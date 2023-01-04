@@ -38,3 +38,6 @@ D = c2d(C,Te)                   %TF discrète
 out = sim('sim_satur_disc',0.05)
 plot(out.simout1)
 
+b1 = ((2*Tm+Te)/(2*Ti));
+b0 = ((Te-2*Tm)/(2*Ti));
+
