@@ -45,7 +45,7 @@ lib : bibliothèque qui gère les périphériques du STM : Drivers_STM32F103_107
 #define FPWM_Khz 20.0
 #define Te 0.000200
 #define Tm 0.002
-#define Ti 0.001442
+#define Ti 0.001442*2.3
 #define b1 ((2*Tm+Te)/(2*Ti))
 #define b0 ((Te-2*Tm)/(2*Ti))
 
@@ -138,10 +138,8 @@ int Courant_1,Cons_In;
 void IT_Principale(void)
 {
 	// Recuperer valeurs ADC
-	//capteur_courant_actuel = I1();
-	//potentiometre_actuel = Entree_3V3();
-	capteur_courant_actuel = 0;
-	potentiometre_actuel = 0.1;
+	capteur_courant_actuel = (float)I1()/4095.0*3.3;
+	potentiometre_actuel = (float)Entree_3V3()/4095.0*3.3;
 	
 	entree_correcteur_actuel = potentiometre_actuel - capteur_courant_actuel;
 	
@@ -150,14 +148,16 @@ void IT_Principale(void)
 	
 	if (alpha > 1) {
 		alpha = 1;
-	}
+	} else if (alpha < 0) {
+		alpha = 0;
+	}	
 		
 	// Mise à jour des valeurs
 	entree_correcteur_old = entree_correcteur_actuel;
 	alpha_old = alpha;
 		
 	// Lancement de la PWM
-	R_Cyc_1((int)(4095*alpha));
-	R_Cyc_2((int)(4095*alpha)); // Pas besoin d'inverser alpha
+	R_Cyc_1((int)(4095*(alpha)));
+	R_Cyc_2((int)(4095*(alpha))); // Pas besoin d'inverser alpha
 }
 
