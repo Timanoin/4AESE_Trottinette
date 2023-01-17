@@ -49,6 +49,17 @@ lib : bibliothèque qui gère les périphériques du STM : Drivers_STM32F103_107
 #define b1 ((2*Tm+Te)/(2*Ti))
 #define b0 ((Te-2*Tm)/(2*Ti))
 
+#define facteur 2
+
+#define Te2 facteur*Te
+#define Tc2 0.01592
+#define Ti2 0.003606
+#define b21 ((Te2)+(2*Tc2))
+#define b20 ((Te2)-(2*Tc2))
+#define a21 (2*Ti2)
+#define a20 (-2*Ti2)
+
+
 
 //==========END USER DEFINE========================================================================================
 
@@ -73,52 +84,57 @@ void IT_Principale(void);
 float Te_us;
 
 // Nos variables
-float potentiometre_actuel, capteur_courant_actuel, entree_correcteur_actuel;
+float potentiometre_actuel, capteur_courant_actuel, entree_correcteur_actuel, capteur_fem_actuel, consigne_vit_actuel, entree_c2_actuel, consigne_c1_actuel,entree_c2_old, consigne_c1_old;
 float entree_correcteur_old;
-float alpha, alpha_old;
+float alpha, alpha_old; 
+int indexTe;
 
 float a; 
 
 int main (void)
 {
-// !OBLIGATOIRE! //	
-Conf_Generale_IO_Carte();	
+	// !OBLIGATOIRE! //	
+	Conf_Generale_IO_Carte();	
+		
+
+		
+	// ------------- Discret, choix de Te -------------------	
+	Te_us=Te*1000000.0; // conversion en µs pour utilisation dans la fonction d'init d'interruption
+	indexTe = 0;
 	
-
 	
-// ------------- Discret, choix de Te -------------------	
-Te_us=Te*1000000.0; // conversion en µs pour utilisation dans la fonction d'init d'interruption
-	
-// Initialisation k-1
-entree_correcteur_old = 0;
-alpha_old = 0;
+	// Initialisation k-1
+	entree_correcteur_old = 0;
+	alpha_old = 0;
+	entree_c2_old = 0;
+	consigne_c1_old = 0;
 
-//______________ Ecrire ici toutes les CONFIGURATIONS des périphériques ________________________________	
-// Paramétrage ADC pour entrée analogique
-Conf_ADC();
-// Configuration de la PWM avec une porteuse Triangle, voie 1 & 2 activée, inversion voie 2
-Triangle (FPWM_Khz);
-Active_Voie_PWM(1);	
-Active_Voie_PWM(2);	
-Inv_Voie(2);
+	//______________ Ecrire ici toutes les CONFIGURATIONS des périphériques ________________________________	
+	// Paramétrage ADC pour entrée analogique
+	Conf_ADC();
+	// Configuration de la PWM avec une porteuse Triangle, voie 1 & 2 activée, inversion voie 2
+	Triangle (FPWM_Khz);
+	Active_Voie_PWM(1);	
+	Active_Voie_PWM(2);	
+	Inv_Voie(2);
 
-Start_PWM;
-R_Cyc_1(2048);  // positionnement à 50% par défaut de la PWM
-R_Cyc_2(2048);
+	Start_PWM;
+	R_Cyc_1(2048);  // positionnement à 50% par défaut de la PWM
+	R_Cyc_2(2048);
 
-// Activation LED
-LED_Courant_On;
-LED_PWM_On;
-LED_PWM_Aux_Off;
-LED_Entree_10V_Off;
-LED_Entree_3V3_On;
-LED_Codeur_Off;
+	// Activation LED
+	LED_Courant_On;
+	LED_PWM_On;
+	LED_PWM_Aux_Off;
+	LED_Entree_10V_Off;
+	LED_Entree_3V3_On;
+	LED_Codeur_Off;
 
-a = b0;
-a = b1;
+	a = b0;
+	a = b1;
 
-// Conf IT
-Conf_IT_Principale_Systick(IT_Principale, Te_us);
+	// Conf IT
+	Conf_IT_Principale_Systick(IT_Principale, Te_us);
 
 	while(1) {
 	
@@ -139,10 +155,31 @@ void IT_Principale(void)
 {
 	// Recuperer valeurs ADC
 	capteur_courant_actuel = (float)I1()/4095.0*3.3;
-	potentiometre_actuel = (float)Entree_3V3()/4095.0*3.3;
+	//potentiometre_actuel = (float)Entree_3V3()/4095.0*3.3; // a modifier
 	
-	entree_correcteur_actuel = potentiometre_actuel - capteur_courant_actuel;
+	// Te2
+	if (indexTe++ == facteur)
+	{
+		indexTe = 0;
+		entree_c2_old = entree_c2_actuel;
+		consigne_c1_old = consigne_c1_actuel;
+		capteur_fem_actuel = (float)Entree_10V()/4095.0*3.3;
+		consigne_vit_actuel = (float)Entree_3V3()/4095.0*3.3;
+		
+		entree_c2_actuel = consigne_vit_actuel - capteur_fem_actuel;
+		consigne_c1_actuel = -a20/a21*consigne_c1_old + b21/a21*entree_c2_actuel + b20/a21*entree_c2_old;
+		
+		if (consigne_c1_actuel < 0) {
+			consigne_c1_actuel = 0;
+		} else if (consigne_c1_actuel > 3.3) {
+			consigne_c1_actuel = 3.3;
+		}
+	}
 	
+	entree_correcteur_actuel = consigne_c1_actuel - capteur_courant_actuel;//potentiometre_actuel - capteur_courant_actuel;
+	
+	
+	//Te
 	// Calcul de alpha à partir de C(s)
 	alpha = alpha_old + b1*entree_correcteur_actuel + b0*entree_correcteur_old;
 	
@@ -155,9 +192,10 @@ void IT_Principale(void)
 	// Mise à jour des valeurs
 	entree_correcteur_old = entree_correcteur_actuel;
 	alpha_old = alpha;
-		
+	
 	// Lancement de la PWM
 	R_Cyc_1((int)(4095*(alpha)));
 	R_Cyc_2((int)(4095*(alpha))); // Pas besoin d'inverser alpha
+
 }
 
