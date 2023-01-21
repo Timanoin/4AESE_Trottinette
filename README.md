@@ -5,7 +5,7 @@ Groupe :
 * Holmes Emily
 * Lagrost Olivier
 
-Lien du rapport : 
-https://insatoulousefr-my.sharepoint.com/:w:/g/personal/holmes_insa-toulouse_fr/Ed9fGo6DwnhLnVZxs50MPmMB-iDCedVrwtggB-bdSWzT2A?e=zCHX00
+Pour plus d'informations concernant l'exécution du programme, rendez vous sur le [README.md du dossier KEIL](https://github.com/Timanoin/4AESE_Trottinette/blob/main/KEIL/README.md).
+ 
 
 
