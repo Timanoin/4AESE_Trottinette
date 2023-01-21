@@ -1,6 +1,6 @@
 ## KEIL
 
-Lorsque le projet KEIL est lancé, vous pouvez choisir d'exécuter soit le programme de la commande en couple, soit de la commande en vitesse. Pour cela, rendez vous dans le fichier `Pilote_Controleur_Puissance.uvprojx`, et modifiez la ligne suivante selon vos souhaits :
+Lorsque le projet KEIL est lancé, vous pouvez choisir d'exécuter soit le programme de la commande en couple, soit de la commande en vitesse. Pour cela, ouvrez le projet `Pilote_Controleur_Puissance.uvprojx` ou bien accédez au code c depuis `src/Main_User.c`, et modifiez la ligne suivante selon vos souhaits :
 ```c
 #define MODE COUPLE
 ```
