@@ -10,4 +10,4 @@ Dans ce bureau d'études, nous avons réalisé la commande en couple de la trott
 - MATLAB : Contient le script Matlab principal (be_trot.m) avec déclaration de variables pour les projets Simulink du même projet.
 
 ## Avancement du Bureau d'Etudes
-A la fin du BE, la commande de courant et de vitesse fonctionnent. Le projet a été testé sur la maquette de trottinette, ainsi que sur la vraie trottinette pour la commande en courant. Le projet est donc terminé.
+A la fin du BE, la commande de courant et de vitesse fonctionnent. Le projet a été testé sur la maquette de trottinette pour les deux commandes, ainsi que sur la vraie trottinette pour la commande en courant. Le projet est donc terminé.
