@@ -165,7 +165,6 @@ void IT_Principale(void)
 {
 	// Recuperer valeurs ADC
 	capteur_courant = (float)I1()/4095.0*3.3;
-	//potentiometre = (float)Entree_3V3()/4095.0*3.3; // a modifier
 	
 	#if (MODE==VITESSE)
 	
@@ -193,6 +192,7 @@ void IT_Principale(void)
 	#else //(MODE==COUPLE)
 	// En mode commande de couple, l'entrée se fait 
 	// directement avant le soustracteur devant C1
+	potentiometre = (float)Entree_3V3()/4095.0*3.3;
 	entree_c1_actuel = potentiometre - capteur_courant;
 	
 	#endif //MODE
