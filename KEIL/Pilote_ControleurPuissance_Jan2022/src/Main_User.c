@@ -25,31 +25,38 @@ COUCHE DRIVER =
 clock.c : contient la fonction Clock_Configure() qui prépare le STM32. Lancée automatiquement à l'init IO
 lib : bibliothèque qui gère les périphériques du STM : Drivers_STM32F103_107_Jan_2015_b
 */
-
-
-
 #include "ToolBox_NRJ_v4.h"
-
-
-
+#define COUPLE 0
+#define VITESSE 1
 
 //=================================================================================================================
 // 					USER DEFINE
 //=================================================================================================================
 
+// $$$$$$$$$$$$$$$$$
+// $ ZONE EDITABLE $
+// $$$$$$$$$$$$$$$$$
 
+// /!\ MODE prend la valeur VITESSE ou COUPLE selon la commande souhaitee
 
+#define MODE VITESSE
 
-
-// Choix de la fréquence PWM (en kHz)
+// Choix de la frequence PWM (en kHz)
 #define FPWM_Khz 20.0
+// Frequence d'echantillonnage du système (en s)
 #define Te 0.000200
+// Multiplicateur de Te pour echantilloner la boucle en vitesse (Te2 = facteur * Te)
+#define facteur 2
+
+// $$$$$$$$$$$$$$$$$$$$$$$$
+// $ FIN DE ZONE EDITABLE $
+// $$$$$$$$$$$$$$$$$$$$$$$$
+
+// NE PAS MODIFIER A PARTIR D'ICI
 #define Tm 0.002
 #define Ti 0.001442*2.3
 #define b1 ((2*Tm+Te)/(2*Ti))
 #define b0 ((Te-2*Tm)/(2*Ti))
-
-#define facteur 2
 
 #define Te2 facteur*Te
 #define Tc2 0.01592
@@ -84,18 +91,20 @@ void IT_Principale(void);
 float Te_us;
 
 // Nos variables
-float potentiometre_actuel, capteur_courant_actuel, entree_correcteur_actuel, capteur_fem_actuel, consigne_vit_actuel, entree_c2_actuel, consigne_c1_actuel,entree_c2_old, consigne_c1_old;
-float entree_correcteur_old;
+float potentiometre, capteur_courant; 
+ 
+float capteur_fem;
+float consigne_vit;
+float entree_c2_actuel, entree_c2_old;
+float consigne_c1_actuel, consigne_c1_old;
+float entree_c1_actuel, entree_c1_old;
 float alpha, alpha_old; 
 int indexTe;
-
-float a; 
 
 int main (void)
 {
 	// !OBLIGATOIRE! //	
 	Conf_Generale_IO_Carte();	
-		
 
 		
 	// ------------- Discret, choix de Te -------------------	
@@ -104,7 +113,11 @@ int main (void)
 	
 	
 	// Initialisation k-1
-	entree_correcteur_old = 0;
+	entree_c1_actuel = 0;
+	alpha = 0;
+	entree_c2_actuel = 0;
+	consigne_c1_actuel = 0;
+	entree_c1_old = 0;
 	alpha_old = 0;
 	entree_c2_old = 0;
 	consigne_c1_old = 0;
@@ -130,14 +143,11 @@ int main (void)
 	LED_Entree_3V3_On;
 	LED_Codeur_Off;
 
-	a = b0;
-	a = b1;
-
 	// Conf IT
 	Conf_IT_Principale_Systick(IT_Principale, Te_us);
 
 	while(1) {
-	
+		// Le contrôleur va effectuer l'interruption Systick tous les Te.
 	}	
 }
 
@@ -154,34 +164,42 @@ int Courant_1,Cons_In;
 void IT_Principale(void)
 {
 	// Recuperer valeurs ADC
-	capteur_courant_actuel = (float)I1()/4095.0*3.3;
-	//potentiometre_actuel = (float)Entree_3V3()/4095.0*3.3; // a modifier
+	capteur_courant = (float)I1()/4095.0*3.3;
+	//potentiometre = (float)Entree_3V3()/4095.0*3.3; // a modifier
+	
+	#if (MODE==VITESSE)
 	
 	// Te2
 	if (indexTe++ == facteur)
 	{
 		indexTe = 0;
+		// Stockage des anciennes valeurs
 		entree_c2_old = entree_c2_actuel;
 		consigne_c1_old = consigne_c1_actuel;
-		capteur_fem_actuel = (float)Entree_10V()/4095.0*3.3;
-		consigne_vit_actuel = (float)Entree_3V3()/4095.0*3.3;
-		
-		entree_c2_actuel = consigne_vit_actuel - capteur_fem_actuel;
+		// Acquisition des valeurs specifiques a la boucle de vitesse
+		capteur_fem = (float)Entree_10V()/4095.0*3.3;
+		consigne_vit = (float)Entree_3V3()/4095.0*3.3;
+		// Correcteur C2
+		entree_c2_actuel = consigne_vit - capteur_fem;
 		consigne_c1_actuel = -a20/a21*consigne_c1_old + b21/a21*entree_c2_actuel + b20/a21*entree_c2_old;
-		
 		if (consigne_c1_actuel < 0) {
 			consigne_c1_actuel = 0;
 		} else if (consigne_c1_actuel > 3.3) {
 			consigne_c1_actuel = 3.3;
 		}
-	}
+	}	
+	entree_c1_actuel = consigne_c1_actuel - capteur_courant;//potentiometre - capteur_courant;
 	
-	entree_correcteur_actuel = consigne_c1_actuel - capteur_courant_actuel;//potentiometre_actuel - capteur_courant_actuel;
+	#else //(MODE==COUPLE)
+	// En mode commande de couple, l'entrée se fait 
+	// directement avant le soustracteur devant C1
+	entree_c1_actuel = potentiometre - capteur_courant;
 	
+	#endif //MODE
 	
 	//Te
 	// Calcul de alpha à partir de C(s)
-	alpha = alpha_old + b1*entree_correcteur_actuel + b0*entree_correcteur_old;
+	alpha = alpha_old + b1*entree_c1_actuel + b0*entree_c1_old;
 	
 	if (alpha > 1) {
 		alpha = 1;
@@ -190,10 +208,10 @@ void IT_Principale(void)
 	}	
 		
 	// Mise à jour des valeurs
-	entree_correcteur_old = entree_correcteur_actuel;
+	entree_c1_old = entree_c1_actuel;
 	alpha_old = alpha;
 	
-	// Lancement de la PWM
+	// Mise a jour du duty cycle de la PWM
 	R_Cyc_1((int)(4095*(alpha)));
 	R_Cyc_2((int)(4095*(alpha))); // Pas besoin d'inverser alpha
 
